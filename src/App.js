@@ -1,8 +1,16 @@
 import Auth from "./components/auth";
 import "./App.css";
-import { db } from "./config/firebase";
+import { db, auth, storage } from "./config/firebase";
 import { useState, useEffect } from "react";
-import { getDocs, collection, addDoc, deleteDoc , doc, updateDoc} from "firebase/firestore";
+import {
+  getDocs,
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  updateDoc,
+} from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 function App() {
   const [movieList, SetMovieLIst] = useState([]);
@@ -13,6 +21,9 @@ function App() {
 
   // update title state
   const [updatedTitle, setUpdatedTitle] = useState("");
+
+  // file upload state
+  const [file, setFile] = useState(null);
   // get a specific collection in firebase using its reference
   const movieCollectionReference = collection(db, "movies");
   // use use useeffect to ensure the function runs on load up
@@ -38,6 +49,7 @@ function App() {
   const addMovie = async () => {
     try {
       await addDoc(movieCollectionReference, {
+        userId: auth?.currentUser?.uid,
         title: title,
         releaseDate: releaseDate,
         recievedAnOscar: movieOscar,
@@ -61,13 +73,25 @@ function App() {
   const updateMovieTitle = async (id) => {
     try {
       const movieDoc = doc(db, "movies", id);
-      await updateDoc(movieDoc,{title: updatedTitle});
+      await updateDoc(movieDoc, { title: updatedTitle });
       getMovieList();
     } catch (error) {
       console.error("An error occured", error);
     }
   };
 
+  const uploadFile = async () => {
+    // this ensures that if the there is no file then it will not run
+    if (!file) return;
+    const filesFolderRef = ref(storage, "files");
+  try {
+     await uploadBytes(filesFolderRef, file);
+  } catch (error) {
+    console.error("An error occured", error);
+    
+  }
+
+  };
 
   return (
     <div className="App">
@@ -103,13 +127,22 @@ function App() {
             </h2>
             <p> Date: {movie.releaseDate}</p>
             {/* always add an anynoumous function for those functions that are going to expliciiltly run like a use efect here as the data was being fetched it was deleted */}
-            <button onClick={() => deletMovie(movie.id)}>Delete this Movie</button>
+            <button onClick={() => deletMovie(movie.id)}>
+              Delete this Movie
+            </button>
             {/* Update section */}
-           <p>Update movie title</p> <input type="text" onChange={(e) => setUpdatedTitle(e.target.value)} />
-           <button onClick={() => updateMovieTitle(movie.id)}>Update</button>
+            <p>Update movie title</p>{" "}
+            <input
+              type="text"
+              onChange={(e) => setUpdatedTitle(e.target.value)}
+            />
+            <button onClick={() => updateMovieTitle(movie.id)}>Update</button>
           </div>
         ))}
       </div>
+      <h1>Upload a file </h1>
+      <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+      <button onClick={() => uploadFile}>Upload</button>
     </div>
   );
 }
